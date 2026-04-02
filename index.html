@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Smart Agriculture System</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body { margin:0; font-family:Arial; color:white; }
+
+.page {
+    min-height:100vh;
+    background:url('https://images.unsplash.com/photo-1500382017468-9049fed747ef') no-repeat center/cover;
+}
+
+.overlay {
+    background:rgba(255,255,255,0.15);
+    backdrop-filter: blur(6px);
+    min-height:100vh;
+}
+
+.dashboard {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+    padding:20px;
+}
+
+.card {
+    background:rgba(255,255,255,0.25);
+    padding:20px;
+    border-radius:15px;
+    color:#000;
+}
+
+.crop-btn {
+    background:linear-gradient(to right,#00c853,#64dd17);
+    padding:12px;
+    margin:8px;
+    border-radius:10px;
+    cursor:pointer;
+    color:white;
+    font-weight:bold;
+}
+
+.hidden { display:none; }
+
+button {
+    padding:10px;
+    background:#00c853;
+    border:none;
+    color:white;
+    border-radius:8px;
+}
+
+.lang-btn {
+    background:#000;
+    color:white;
+    padding:8px 15px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- PAGE 1 -->
+<div id="page1" class="page">
+<div class="overlay" style="text-align:center;padding-top:120px;">
+
+<h1 id="title">🌱 Upload Soil Report</h1>
+
+<div>
+<button class="lang-btn" onclick="setLang('en')">English</button>
+<button class="lang-btn" onclick="setLang('kn')">ಕನ್ನಡ</button>
+</div>
+
+<br>
+<input type="file"><br><br>
+<button onclick="processFile()" id="uploadBtn">Upload & Continue</button>
+
+</div>
+</div>
+
+<!-- PAGE 2 -->
+<div id="page2" class="page hidden">
+<div class="overlay">
+
+<h1 id="dashTitle"></h1>
+
+<div class="dashboard">
+
+<div class="card">
+<h3 id="soilT"></h3>
+<p id="soilDetails"></p>
+</div>
+
+<div class="card">
+<h3 id="weatherT"></h3>
+<p id="weatherDetails"></p>
+</div>
+
+<div class="card">
+<h3 id="waterT"></h3>
+<p id="water"></p>
+</div>
+
+<div class="card">
+<h3 id="cropT"></h3>
+<div id="crops"></div>
+</div>
+
+<div class="card">
+<h3 id="profitT"></h3>
+<p id="profit"></p>
+<canvas id="profitChart"></canvas>
+</div>
+
+<div class="card">
+<h3 id="yieldT"></h3>
+<canvas id="yieldChart"></canvas>
+</div>
+
+<div class="card">
+<h3 id="fertT"></h3>
+<p id="fertilizer"></p>
+</div>
+
+<div class="card">
+<h3>🎤 Voice Assistant</h3>
+<button onclick="speak()">Speak</button>
+<button onclick="stopSpeak()">Stop</button>
+</div>
+
+<div class="card">
+<h3 id="recT"></h3>
+<p id="insight"></p>
+</div>
+
+</div>
+</div>
+</div>
+
+<script>
+
+let lang="en";
+let currentCrop="";
+let profitChart,yieldChart;
+
+// UI TEXT
+const uiText={
+en:{title:"🌱 Upload Soil Report",dashboard:"📊 Agriculture Dashboard",upload:"Upload & Continue",soil:"Soil Analysis",weather:"Weather Conditions",water:"Water Requirement",crop:"Select Crop",profit:"Profit Estimation",yield:"Yield Prediction",fert:"Fertilizer Plan",rec:"Recommendation"},
+kn:{title:"🌱 ಮಣ್ಣಿನ ವರದಿ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",dashboard:"📊 ಕೃಷಿ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",upload:"ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",soil:"ಮಣ್ಣಿನ ವಿಶ್ಲೇಷಣೆ",weather:"ಹವಾಮಾನ ಸ್ಥಿತಿ",water:"ನೀರಿನ ಅವಶ್ಯಕತೆ",crop:"ಬೆಳೆ ಆಯ್ಕೆ",profit:"ಲಾಭ ಅಂದಾಜು",yield:"ಉತ್ಪಾದನೆ ಅಂದಾಜು",fert:"ಎರಿವು ಯೋಜನೆ",rec:"ಶಿಫಾರಸು"}
+};
+
+// SOIL
+function getSoilInfo(){
+return (lang==="en") ?
+"Soil contains nutrients like Nitrogen, Phosphorus, Potassium. Helps plant growth, root strength, and disease resistance. pH controls nutrient absorption. Organic matter improves fertility." :
+"ಮಣ್ಣು ನೈಟ್ರೋಜನ್, ಫಾಸ್ಫರಸ್ ಮತ್ತು ಪೊಟ್ಯಾಸಿಯಂ ಹೊಂದಿದೆ. ಸಸ್ಯ ಬೆಳವಣಿಗೆಗೆ ಸಹಾಯಕ.";
+}
+
+// WEATHER
+function getWeatherInfo(){
+return (lang==="en") ?
+"Weather impacts crop growth. Temperature, rainfall, humidity, and wind affect productivity. Stable climate improves yield." :
+"ಹವಾಮಾನ ಬೆಳೆ ಬೆಳವಣಿಗೆಗೆ ಮುಖ್ಯವಾಗಿದೆ.";
+}
+
+// 🌾 CROP DATA
+const cropData = {
+
+Rice:{
+profit:90000,
+yield:[50,80,100],
+water:{en:"Requires continuous irrigation.",kn:"ನಿರಂತರ ನೀರು ಅಗತ್ಯ."},
+fert:{en:"Use urea, compost, neem oil, organic manure, and bio fertilizers. Apply in stages. Maintain soil moisture. Avoid excess chemicals. Improve microbes. Spray organic nutrients regularly.",kn:"ಯೂರಿಯಾ, ಕಾಂಪೋಸ್ಟ್ ಮತ್ತು ಬಯೋ ಎರಿವು ಬಳಸಿ. ಹಂತವಾಗಿ ಎರಿವು ಬಳಸಿ."},
+rec:{en:"Rice grows in water-rich soil. High yield crop. Strong demand. Suitable for irrigated land. Provides stable income. Easy to manage. Ensures food security. Good market price.",kn:"ಅಕ್ಕಿ ನೀರು ಹೆಚ್ಚು ಇರುವ ಮಣ್ಣಿಗೆ ಸೂಕ್ತ. ಉತ್ತಮ ಉತ್ಪಾದನೆ ಮತ್ತು ಲಾಭ ನೀಡುತ್ತದೆ."}
+},
+
+Cotton:{
+profit:80000,
+yield:[40,70,90],
+water:{en:"Needs moderate irrigation.",kn:"ಮಧ್ಯಮ ನೀರು ಅಗತ್ಯ."},
+fert:{en:"Use compost, vermicompost, neem cake, phosphorus, and potassium. Avoid excess nitrogen. Organic sprays improve fiber quality. Maintain soil balance. Monitor crop health.",kn:"ಕಾಂಪೋಸ್ಟ್ ಮತ್ತು ನೀಮ್ ಕೇಕ್ ಬಳಸಿ."},
+rec:{en:"Cotton grows well in balanced soil. High demand in textile industry. Good profit crop. Requires less water. Suitable for dry regions. Easy to manage. High export value.",kn:"ಕಾಟನ್ ಸಮತೋಲನ ಮಣ್ಣಿಗೆ ಸೂಕ್ತ ಮತ್ತು ಉತ್ತಮ ಲಾಭ ನೀಡುತ್ತದೆ."}
+},
+
+Groundnut:{
+profit:70000,
+yield:[45,75,95],
+water:{en:"Requires low to moderate irrigation. Avoid waterlogging.",kn:"ಕಡಿಮೆ ನೀರು ಅಗತ್ಯ. ನೀರು ನಿಲ್ಲಬಾರದು."},
+fert:{en:"Use gypsum, compost, and organic fertilizers. Apply calcium-rich fertilizers. Neem cake prevents pests. Maintain soil aeration. Avoid excess nitrogen. Improves seed quality. Organic farming preferred.",kn:"ಜಿಪ್ಸಮ್ ಮತ್ತು ಕಾಂಪೋಸ್ಟ್ ಬಳಸಿ. ನೀಮ್ ಕೇಕ್ ಕೀಟ ನಿಯಂತ್ರಣಕ್ಕೆ ಸಹಾಯಕ."},
+rec:{en:"Groundnut grows well in sandy soil. Requires less water. Good oil crop. High market demand. Suitable for dry regions. Improves soil fertility. Profitable crop. Easy cultivation.",kn:"ಗ್ರೌಂಡ್ನಟ್ ಮಣ್ಣು ಮರಳು ಪ್ರದೇಶದಲ್ಲಿ ಚೆನ್ನಾಗಿ ಬೆಳೆಯುತ್ತದೆ. ಉತ್ತಮ ಲಾಭ ನೀಡುತ್ತದೆ."}
+}
+
+};
+
+// APPLY
+function updateInfo(){
+document.getElementById("soilDetails").innerText=getSoilInfo();
+document.getElementById("weatherDetails").innerText=getWeatherInfo();
+}
+
+// LANGUAGE
+function setLang(l){
+lang=l;
+document.getElementById("title").innerText=uiText[l].title;
+document.getElementById("uploadBtn").innerText=uiText[l].upload;
+document.getElementById("dashTitle").innerText=uiText[l].dashboard;
+
+document.getElementById("soilT").innerText=uiText[l].soil;
+document.getElementById("weatherT").innerText=uiText[l].weather;
+document.getElementById("waterT").innerText=uiText[l].water;
+document.getElementById("cropT").innerText=uiText[l].crop;
+document.getElementById("profitT").innerText=uiText[l].profit;
+document.getElementById("yieldT").innerText=uiText[l].yield;
+document.getElementById("fertT").innerText=uiText[l].fert;
+document.getElementById("recT").innerText=uiText[l].rec;
+
+updateInfo();
+if(currentCrop) selectCrop(currentCrop);
+}
+
+// FILE
+function processFile(){
+document.getElementById("page1").classList.add("hidden");
+document.getElementById("page2").classList.remove("hidden");
+
+setLang(lang);
+
+let html="";
+["Rice","Cotton","Groundnut"].forEach(c=>{
+html+=`<div class="crop-btn" onclick="selectCrop('${c}')">${c}</div>`;
+});
+document.getElementById("crops").innerHTML=html;
+}
+
+// SELECT
+function selectCrop(crop){
+currentCrop=crop;
+let c=cropData[crop];
+
+document.getElementById("profit").innerText=`₹${c.profit}`;
+document.getElementById("water").innerText=c.water[lang];
+document.getElementById("fertilizer").innerText=c.fert[lang];
+document.getElementById("insight").innerText=c.rec[lang];
+
+if(profitChart) profitChart.destroy();
+profitChart=new Chart(document.getElementById("profitChart"),{
+type:'line',
+data:{labels:["Start","Growth","Harvest"],datasets:[{data:[20000,c.profit/2,c.profit]}]}
+});
+
+if(yieldChart) yieldChart.destroy();
+yieldChart=new Chart(document.getElementById("yieldChart"),{
+type:'bar',
+data:{labels:["Present","Future","Total"],datasets:[{data:c.yield}]}
+});
+}
+
+// VOICE
+function speak(){
+speechSynthesis.speak(new SpeechSynthesisUtterance(document.getElementById("insight").innerText));
+}
+function stopSpeak(){speechSynthesis.cancel();}
+
+</script>
+
+</body>
+</html>
